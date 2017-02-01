@@ -17,7 +17,7 @@ class DB(object):
         self.meta = meta
 
     def get_table_class(self, key):
-        return self.base.classes.get()
+        return self.base.classes.get(key)
 
     def get_table_names(self):
         return self.base.classes.keys()
