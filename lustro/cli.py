@@ -15,7 +15,7 @@ def cli(ctx, source, target, tables, source_schema):
         ctx.obj = {}
     if source.startswith('oracle'):
         source = oracle_qualified_dsn(source)
-    ctx.obj['MIRROR'] = Mirror(source=source, target=target, source_schema)
+    ctx.obj['MIRROR'] = Mirror(source=source, target=target, source_schema=source_schema)
     ctx.obj['TABLES'] = tables
 
 
