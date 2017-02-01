@@ -16,8 +16,11 @@ class DB(object):
         self.base = base
         self.meta = meta
 
-    def get_classes(self):
-        return self.base.classes
+    def get_table_class(self, key):
+        return self.base.classes.get()
+
+    def get_table_names(self):
+        return self.base.classes.keys()
 
     def get_session(self):
         return Session(self.engine)
