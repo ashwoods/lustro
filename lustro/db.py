@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import MetaData, create_engine
+from sqlalchemy import MetaData, Table, Integer, create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.automap import automap_base
-
+from sqlalchemy.dialects.oracle.base import NUMBER
 
 class DB(object):
     """Facade for the low level DB operations"""
@@ -16,10 +16,16 @@ class DB(object):
         self.base = base
         self.meta = meta
 
-    def get_table_class(self, key):
+    def get_meta_table(self, key):
+        return self.meta.tables.get(key)
+
+    def get_meta_names(self):
+        return self.meta.classes.keys()
+
+    def get_base_class(self, key):
         return self.base.classes.get(key)
 
-    def get_table_names(self):
+    def get_base_names(self):
         return self.base.classes.keys()
 
     def get_session(self):
@@ -27,6 +33,19 @@ class DB(object):
 
     def get_rows(self, session, cls, modified=None):
         return session.query(cls).all()
+
+    def generate_table(self, key, meta=None):
+        if meta is None:
+            meta = MetaData()
+        source_table = self.get_meta_table(key)
+        columns = []
+        for col in source_table.columns.values():
+            new_col = col.copy()
+            if isinstance(new_col.type, NUMBER):
+                new_col.type = Integer
+            columns.append(new_col)
+        return Table(source_table.name, meta, *columns)
+
 
 
 class Mirror(object):
@@ -39,7 +58,7 @@ class Mirror(object):
         pass
 
     def create(self, tables):
-        pass
+        self.metadata.create_all(engine)
 
     def recreate(self, tables):
         pass
