@@ -9,10 +9,12 @@ class DB(object):
     """Facade for the low level DB operations"""
     def __init__(self, dsn, schema=None):
         self.engine = create_engine(dsn)
-        self.meta = MetaData()
-        self.meta.reflect(bind=self.engine, schema=schema)
-        self.base = automap_base(metadata=self.meta)
-        self.base.prepare()
+        meta = MetaData()
+        meta.reflect(bind=self.engine, schema=schema)
+        base = automap_base(metadata=self.meta)
+        base.prepare()
+        self.base = base
+        self.meta = meta
 
     def get_classes(self):
         return self.base.classes
