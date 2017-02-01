@@ -10,41 +10,41 @@ from .utils import oracle_qualified_dsn
 @click.option('--tables', default=None, help="Commna separated tables names to act on.")
 @click.option('--source-schema', default=None, help="Source schema/owner")
 @click.pass_context
-def cli(ctx, source, target, tables):
+def cli(ctx, source, target, tables, source_schema):
     if ctx.obj is None:
         ctx.obj = {}
     if source.startswith('oracle'):
         source = oracle_qualified_dsn(source)
-    ctx['MIRROR'] = Mirror(source=source, target=target)
-    ctx['TABLES'] = tables
+    ctx.obj['MIRROR'] = Mirror(source=source, target=target, source_schema)
+    ctx.obj['TABLES'] = tables
 
 
-@click.command()
+@cli.command()
 @click.pass_context
 def create(ctx):
     """Creates the schema but doesn't copy any data"""
-    mirror = ctx['MIRROR']
-    mirror.create(tables=ctx['TABLES'])
+    mirror = ctx.obj['MIRROR']
+    mirror.create(tables=ctx.obj['TABLES'])
 
 
-@click.command()
+@cli.command()
 @click.option('--modified', default='modified', help='Specify name of modified field')
 @click.pass_context
 def diff(ctx, modified):
     """Creates the schema if it doesn't exist and copies """
-    mirror = ctx['MIRROR']
-    mirror.diff(tables=ctx['TABLES'], modified=modified)
+    mirror = ctx.obj['MIRROR']
+    mirror.diff(tables=ctx.obj['TABLES'], modified=modified)
 
 
-@click.command()
+@cli.command()
 @click.pass_context
 def recreate(ctx):
-    mirror = ctx['MIRROR']
-    mirror.recreate(tables=ctx['TABLES'])
+    mirror = ctx.obj['MIRROR']
+    mirror.recreate(tables=ctx.obj['TABLES'])
 
 
-@click.command()
+@cli.command()
 @click.pass_context
 def mirror(ctx):
-    mirror = ctx['MIRROR']
-    mirror.mirror(tables=ctx['TABLES'])
+    mirror = ctx.obj['MIRROR']
+    mirror.mirror(tables=ctx.obj['TABLES'])
