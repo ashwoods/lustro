@@ -34,17 +34,16 @@ class DB(object):
     def get_rows(self, session, cls, modified=None):
         return session.query(cls).all()
 
-    def generate_table(self, key, meta=None):
+    def generate_table(self, table, meta=None):
         if meta is None:
             meta = MetaData()
-        source_table = self.get_meta_table(key)
         columns = []
-        for col in source_table.columns.values():
+        for col in table.columns.values():
             new_col = col.copy()
             if isinstance(new_col.type, NUMBER):
                 new_col.type = Integer
             columns.append(new_col)
-        return Table(source_table.name, meta, *columns)
+        return Table(table.name, meta, *columns)
 
 
 
@@ -58,7 +57,11 @@ class Mirror(object):
         pass
 
     def create(self, tables):
-        self.metadata.create_all(engine)
+        meta = MetaData()
+        for table in self.source.meta.sorted_tables:
+            self.source.generate_table(table, meta)
+        import ipdb; ipdb.set_trace()
+        self.target.metadata.create_all(self.target.engine)
 
     def recreate(self, tables):
         pass
