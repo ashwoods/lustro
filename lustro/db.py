@@ -60,7 +60,6 @@ class Mirror(object):
         meta = MetaData()
         for table in self.source.meta.sorted_tables:
             self.source.generate_table(table, meta)
-        import ipdb; ipdb.set_trace()
         self.target.metadata.create_all(self.target.engine)
 
     def recreate(self, tables):
