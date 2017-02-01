@@ -11,7 +11,7 @@ class DB(object):
         self.engine = create_engine(dsn)
         meta = MetaData()
         meta.reflect(bind=self.engine, schema=schema)
-        base = automap_base(metadata=self.meta)
+        base = automap_base(metadata=meta)
         base.prepare()
         self.base = base
         self.meta = meta
