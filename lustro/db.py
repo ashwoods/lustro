@@ -30,7 +30,7 @@ class Mirror(object):
         self.source = DB(source, source_schema)
         self.target = DB(target, target_schema)
 
-    def diff(self, tables):
+    def diff(self, tables, modified):
         pass
 
     def create(self, tables):
