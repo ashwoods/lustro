@@ -7,9 +7,9 @@ from sqlalchemy.ext.automap import automap_base
 
 BASIC_TYPES = {
     String: ['length'],
-    Integer: [],
     TIMESTAMP: [],
     DATETIME: [],
+    Integer: [],
 }
 
 
@@ -102,7 +102,7 @@ class Mirror(object):
     def create(self, tables):
         meta = MetaData(bind=self.target.engine)
         for table in self.source.meta.sorted_tables:
-            self.source.generate_table(table, meta)
+            self.source.safe_generate_table(table, meta)
         meta.create_all()
         self.target.set_meta(meta)
 
