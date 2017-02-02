@@ -17,15 +17,22 @@ class DB(object):
     """Facade for the low level DB operations"""
     def __init__(self, dsn, schema=None):
         self.engine = create_engine(dsn)
+        self.base = None
+        self.meta = None
+
         meta = MetaData()
         meta.reflect(bind=self.engine, schema=schema)
-        base = automap_base(metadata=meta)
-        base.prepare()
-        self.base = base
-        self.meta = meta
+
+        self.set_meta(meta)
 
     def get_meta_table(self, key):
         return self.meta.tables.get(key)
+
+    def set_meta(self, meta):
+        self.meta = meta
+        base = automap_base(metadata=self.meta)
+        base.prepare()
+        self.base = base
 
     def get_meta_names(self):
         return self.meta.classes.keys()
@@ -56,7 +63,7 @@ class DB(object):
         return Table(table.name, meta, *columns)
 
     def safe_generate_table(self, table, meta=None):
-        """Substitute basic types for generic ones"""
+        """Substitute db specific types for generic ones"""
         if meta is None:
             meta = MetaData()
         columns = []
@@ -77,8 +84,6 @@ class DB(object):
         return Table(table.name, meta, *columns)
 
 
-
-
 class Mirror(object):
     """API for cli mirroring operations"""
     def __init__(self, source, target, source_schema=None, target_schema=None):
@@ -93,10 +98,20 @@ class Mirror(object):
         for table in self.source.meta.sorted_tables:
             self.source.generate_table(table, meta)
         meta.create_all()
+        self.target.set_meta(meta)
 
     def recreate(self, tables):
         pass
 
     def mirror(self, tables):
-        pass
+        src_session = self.source.get_session()
+        trg_session = self.target.get_session()
+
+        for key in self.source.get_base_names():
+            src_cls = self.source.get_base_name(key)
+            trg_cls = self.target.get_base_name(key)
+
+            rows = self.source.get_rows(session=src_session, cls=src_cls)
+
+            import ipdb; ipdb.set_trace()
 
