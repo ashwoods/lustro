@@ -60,7 +60,7 @@ class Mirror(object):
         meta = MetaData()
         for table in self.source.meta.sorted_tables:
             self.source.generate_table(table, meta)
-        self.target.metadata.create_all(self.target.engine)
+        meta.create_all(self.target.engine)
 
     def recreate(self, tables):
         pass
