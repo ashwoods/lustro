@@ -54,11 +54,17 @@ class DB(object):
             meta = MetaData()
         columns = []
         for col in table.columns.values():
+            # This is an ugly hack but worked for the three types I
+            # had to deal with. To make it more robust, you would want
+            # to go up the class __mro__ until you get a match for the types
+            # that you want swap
             new_col = col.copy()
-            if isinstance(new_col.type, NUMBER):
+            if isinstance(col.type, NUMBER):
                 new_col.type = Integer
-            elif isinstance(new_col.type, DATETIME):
+            if isinstance(col.type, DATETIME):
                 new_col.type = DATETIME
+            if isinstance(col.type, TIMESTAMP):
+                new_col.type = TIMESTAMP
             columns.append(new_col)
         return Table(table.name, meta, *columns)
 
@@ -113,5 +119,5 @@ class Mirror(object):
 
             rows = self.source.get_rows(session=src_session, cls=src_cls)
 
-            import ipdb; ipdb.set_trace()
+            trg_cls.__table__.columns.keys() == src_cls.__table__.column.keys()
 
