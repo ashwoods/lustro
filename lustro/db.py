@@ -112,12 +112,18 @@ class Mirror(object):
     def mirror(self, tables):
         src_session = self.source.get_session()
         trg_session = self.target.get_session()
-
+        session_rows = []
         for key in self.source.get_base_names():
             src_cls = self.source.get_base_class(key)
             trg_cls = self.target.get_base_class(key)
 
-            rows = self.source.get_rows(session=src_session, cls=src_cls)
+            src_rows = self.source.get_rows(session=src_session, cls=src_cls)
+            trg_rows = []
+            for row in src_rows:
+                row_dict = row.__dict__
+                del row_dict['_sa_instance_state']
+                session_rows.append(trg_cls(**row_dict))
 
-            trg_cls.__table__.columns.keys() == src_cls.__table__.columns.keys()
+        trg_session.add_all(session_rows)
+        trg_session.commit()
 
