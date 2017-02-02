@@ -7,7 +7,7 @@ from sqlalchemy.ext.automap import automap_base
 
 BASIC_TYPES = {
     String: ['length'],
-    TIMESTAMP: [],
+  #  TIMESTAMP: [],
     DATETIME: [],
     Integer: [],
 }
@@ -119,5 +119,5 @@ class Mirror(object):
 
             rows = self.source.get_rows(session=src_session, cls=src_cls)
 
-            trg_cls.__table__.columns.keys() == src_cls.__table__.column.keys()
+            trg_cls.__table__.columns.keys() == src_cls.__table__.columns.keys()
 
