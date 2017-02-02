@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import MetaData, Table, Column,  Integer, String, create_engine
+from sqlalchemy import MetaData, Table, Column,  Integer, TIMESTAMP, DATETIME, String, create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.automap import automap_base
 
@@ -8,6 +8,8 @@ from sqlalchemy.ext.automap import automap_base
 BASIC_TYPES = {
     String: ['length'],
     Integer: [],
+    TIMESTAMP: [],
+    DATETIME: [],
 }
 
 
@@ -45,6 +47,20 @@ class DB(object):
             meta = MetaData()
         columns = []
         for col in table.columns.values():
+            new_col = col.copy()
+            if isinstance(new_col.type, NUMBER):
+                new_col.type = Integer
+            elif isinstance(new_col.type, DATETIME):
+                new_col.type = DATETIME
+            columns.append(new_col)
+        return Table(table.name, meta, *columns)
+
+    def safe_generate_table(self, table, meta=None):
+        """Substitute basic types for generic ones"""
+        if meta is None:
+            meta = MetaData()
+        columns = []
+        for col in table.columns.values():
             for col_type in BASIC_TYPES.keys():
                 if isinstance(col.type, col_type):
                     kwarg_types = BASIC_TYPES[col_type]
@@ -61,6 +77,8 @@ class DB(object):
         return Table(table.name, meta, *columns)
 
 
+
+
 class Mirror(object):
     """API for cli mirroring operations"""
     def __init__(self, source, target, source_schema=None, target_schema=None):
@@ -75,7 +93,6 @@ class Mirror(object):
         for table in self.source.meta.sorted_tables:
             self.source.generate_table(table, meta)
         meta.create_all()
-        import ipdb; ipdb.set_trace()
 
     def recreate(self, tables):
         pass
