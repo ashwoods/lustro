@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import MetaData, Table, Integer, create_engine
+from sqlalchemy import MetaData, Table, Column,  Integer, String, create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.dialects.oracle.base import NUMBER
+
+
+BASIC_TYPES = {
+    String: ['length'],
+    Integer: [],
+}
+
 
 class DB(object):
     """Facade for the low level DB operations"""
@@ -39,12 +45,20 @@ class DB(object):
             meta = MetaData()
         columns = []
         for col in table.columns.values():
-            new_col = col.copy()
-            if isinstance(new_col.type, NUMBER):
-                new_col.type = Integer
-            columns.append(new_col)
+            for col_type in BASIC_TYPES.keys():
+                if isinstance(col.type, col_type):
+                    kwarg_types = BASIC_TYPES[col_type]
+                    kwargs = {}
+                    for kwarg_type in kwarg_types:
+                        kwargs[kwarg_type] = getattr(col.type, kwarg_type)
+                    new_col = Column(
+                        col.name,
+                        col_type(**kwargs),
+                        primary_key=col.primary_key,
+                        nullable=col.nullable
+                    )
+                    columns.append(new_col)
         return Table(table.name, meta, *columns)
-
 
 
 class Mirror(object):
@@ -57,10 +71,11 @@ class Mirror(object):
         pass
 
     def create(self, tables):
-        meta = MetaData()
+        meta = MetaData(bind=self.target.engine)
         for table in self.source.meta.sorted_tables:
             self.source.generate_table(table, meta)
-        meta.create_all(self.target.engine)
+        meta.create_all()
+        import ipdb; ipdb.set_trace()
 
     def recreate(self, tables):
         pass
