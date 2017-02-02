@@ -108,8 +108,8 @@ class Mirror(object):
         trg_session = self.target.get_session()
 
         for key in self.source.get_base_names():
-            src_cls = self.source.get_base_name(key)
-            trg_cls = self.target.get_base_name(key)
+            src_cls = self.source.get_base_class(key)
+            trg_cls = self.target.get_base_class(key)
 
             rows = self.source.get_rows(session=src_session, cls=src_cls)
 
