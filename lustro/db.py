@@ -59,7 +59,7 @@ class DB(object):
             # to go up the class __mro__ until you get a match for the types
             # that you want swap
             new_col = col.copy()
-            if isinstance(col.type, NUMBER):
+            if isinstance(col.type, Integer):
                 new_col.type = Integer
             if isinstance(col.type, DATETIME):
                 new_col.type = DATETIME
