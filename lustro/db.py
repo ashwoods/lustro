@@ -90,8 +90,6 @@ class DB(object):
                         nullable=col.nullable
                     )
                     columns.append(new_col)
-                else:
-                    raise NotImplementedError
         return Table(table.name, meta, *columns)
 
 
