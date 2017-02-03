@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import MetaData, Table, Column,  Integer, TIMESTAMP, DATETIME, String, create_engine
+from collections import OrderedDict
+
+from sqlalchemy import MetaData, Table, Column,  Integer, TIMESTAMP, DateTime, String, create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.automap import automap_base
 
 
-BASIC_TYPES = {
-    String: ['length'],
-  #  TIMESTAMP: [],
-    DATETIME: [],
-    Integer: [],
-}
+BASIC_TYPES = OrderedDict()
+BASIC_TYPES[String] = ['length']
+BASIC_TYPES[TIMESTAMP] = []
+BASIC_TYPES[DateTime] = []
+# BASIC_TYPES[DATETIME] = []
+BASIC_TYPES[Integer] = []
+
 
 
 class DB(object):
@@ -87,6 +90,8 @@ class DB(object):
                         nullable=col.nullable
                     )
                     columns.append(new_col)
+                else:
+                    raise NotImplementedError
         return Table(table.name, meta, *columns)
 
 
@@ -114,6 +119,7 @@ class Mirror(object):
         trg_session = self.target.get_session()
         session_rows = []
         for key in self.source.get_base_names():
+            trg_cls.__table__.columns.keys() == src_cls.__table__.column.keys()
             src_cls = self.source.get_base_class(key)
             trg_cls = self.target.get_base_class(key)
 
@@ -126,4 +132,5 @@ class Mirror(object):
 
         trg_session.add_all(session_rows)
         trg_session.commit()
+
 
