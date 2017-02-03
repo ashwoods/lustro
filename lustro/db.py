@@ -120,7 +120,7 @@ class Mirror(object):
 
             src_cls = self.source.get_base_class(key)
             trg_cls = self.target.get_base_class(key)
-            assert trg_cls.__table__.columns.keys() == src_cls.__table__.column.keys()
+            assert trg_cls.__table__.columns.keys() == src_cls.__table__.columns.keys()
             src_rows = self.source.get_rows(session=src_session, cls=src_cls)
             trg_rows = []
             for row in src_rows:
