@@ -1,11 +1,17 @@
 # -*- coding: utf-8 -*-
-
+import logging
 from collections import OrderedDict
 
 from sqlalchemy import MetaData, Table, Column,  Integer, TIMESTAMP, DateTime, String, create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.automap import automap_base
+from sqlalchemy import desc
+from sqlalchemy.inspection import inspect
 
+
+from .utils import get_or_create, create_or_update
+
+logger = logging.getLogger(__name__)
 
 BASIC_TYPES = OrderedDict()
 BASIC_TYPES[String] = ['length']
@@ -49,8 +55,16 @@ class DB(object):
     def get_session(self):
         return Session(self.engine)
 
-    def get_rows(self, session, cls, modified=None):
-        return session.query(cls).all()
+    def get_rows(self, session, cls, modified=None, field='modified'):
+        if modified:
+            query = session.query(cls).filter(getattr(cls, field) >= modified)
+        else:
+            query = session.query(cls)
+        return query.all(), query.count()
+
+    def get_latest_by(self, session, cls, field='modified'):
+        latest = session.query(cls).order_by(getattr(cls,field).desc()).limit(1)
+        return getattr(latest[0], field)
 
     def generate_table(self, table, meta=None):
         if meta is None:
@@ -99,8 +113,54 @@ class Mirror(object):
         self.source = DB(source, source_schema)
         self.target = DB(target, target_schema)
 
-    def diff(self, tables, modified):
-        pass
+    def diff(self, tables, modified=None):
+        logger.info("Starting diff ...")
+        src_session = self.source.get_session()
+        trg_session = self.target.get_session()
+        session_rows = []
+
+        modified_rows = []
+        created_rows = []
+        for key in self.source.get_base_names():
+
+            src_cls = self.source.get_base_class(key)
+            trg_cls = self.target.get_base_class(key)
+            try:
+                assert trg_cls.__table__.columns.keys() == src_cls.__table__.columns.keys()
+            except AssertionError:
+                logger.error("Source and target database have different schemas.", exc_info=True)
+
+            if modified is None:
+                modified = self.target.get_latest_by(trg_session, cls=trg_cls)
+            src_rows, count = self.source.get_rows(session=src_session, cls=src_cls, modified=modified)
+
+            logger.info("Found %s rows modified since %s, starting diff" % (count, modified))
+
+            for row in src_rows:
+                row_dict = row.__dict__
+                del row_dict['_sa_instance_state']
+
+                pk_name = inspect(src_cls).primary_key[0].name
+                pk=row_dict.pop(pk_name)
+                obj, created = create_or_update(
+                        trg_cls,
+                        trg_session,
+                        values=row_dict,
+                        **{pk_name:pk})
+
+                if created:
+                    created_rows.append(obj)
+                else:
+                    modified_rows.append(obj)
+        logger.info(
+            "Commiting %s/%s created/modified rows in target db" % (
+                len(created_rows), len(modified_rows)
+            )
+        )
+        import ipdb; ipdb.set_trace()
+        trg_session.commit()
+        return len(created_rows), len(modified_rows)
+
 
     def create(self, tables):
         meta = MetaData(bind=self.target.engine)
@@ -116,19 +176,25 @@ class Mirror(object):
         src_session = self.source.get_session()
         trg_session = self.target.get_session()
         session_rows = []
+        logger.info("Starting mirror db")
         for key in self.source.get_base_names():
 
             src_cls = self.source.get_base_class(key)
             trg_cls = self.target.get_base_class(key)
-            assert trg_cls.__table__.columns.keys() == src_cls.__table__.columns.keys()
-            src_rows = self.source.get_rows(session=src_session, cls=src_cls)
+            try:
+                assert trg_cls.__table__.columns.keys() == src_cls.__table__.columns.keys()
+            except AssertionError:
+                logger.error("Source and target database have different schemas.", exc_info=True)
+
+            src_rows, count = self.source.get_rows(session=src_session, cls=src_cls)
             trg_rows = []
             for row in src_rows:
                 row_dict = row.__dict__
                 del row_dict['_sa_instance_state']
                 session_rows.append(trg_cls(**row_dict))
 
+        logger.info("Commiting %s rows to target DB" % len(session_rows))
         trg_session.add_all(session_rows)
         trg_session.commit()
-
+        return session_rows
 

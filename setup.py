@@ -36,8 +36,10 @@ setup(
     ],
     install_requires=[
         'click',
+        'click-log',
         'cx_Oracle',
-        'Psycopg2'
+        'Psycopg2',
+	'sqlalchemy'
     ],
     zip_safe=False,
 )

@@ -1,10 +1,15 @@
 import click
+import click_log
+import os
 
 from .db import Mirror
 from .utils import oracle_qualified_dsn
 
+os.environ['NLS_LANG']= 'GERMAN.AL32UTF8'
 
 @click.group()
+@click_log.simple_verbosity_option()
+@click_log.init(__name__)
 @click.option('--source', help="Source DB DSN.")
 @click.option('--target', help="Target DB DSN.")
 @click.option('--tables', default=None, help="Commna separated tables names to act on.")
@@ -28,12 +33,14 @@ def create(ctx):
 
 
 @cli.command()
-@click.option('--modified', default='modified', help='Specify name of modified field')
+@click.option('--field', default='modified', help='Specify name of modified field')
+@click.option('--modified', default=None, help='Specify a datetime for diff')
 @click.pass_context
-def diff(ctx, modified):
+def diff(ctx, modified, field):
     """Creates the schema if it doesn't exist and copies """
     mirror = ctx.obj['MIRROR']
-    mirror.diff(tables=ctx.obj['TABLES'], modified=modified)
+    created, modified = mirror.diff(tables=ctx.obj['TABLES'], modified=modified)
+    click.echo("Results %s created, %s modfied" % (created), modified))
 
 
 @cli.command()
