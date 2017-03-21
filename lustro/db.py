@@ -157,7 +157,6 @@ class Mirror(object):
                 len(created_rows), len(modified_rows)
             )
         )
-        import ipdb; ipdb.set_trace()
         trg_session.commit()
         return len(created_rows), len(modified_rows)
 
