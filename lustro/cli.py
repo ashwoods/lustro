@@ -40,7 +40,7 @@ def diff(ctx, modified, field):
     """Creates the schema if it doesn't exist and copies """
     mirror = ctx.obj['MIRROR']
     created, modified = mirror.diff(tables=ctx.obj['TABLES'], modified=modified)
-    click.echo("Results %s created, %s modfied" % (created), modified))
+    click.echo("Results %s created, %s modfied" % (created, modified))
 
 
 @cli.command()
