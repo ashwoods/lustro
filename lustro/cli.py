@@ -20,6 +20,10 @@ def cli(ctx, source, target, tables, source_schema):
         ctx.obj = {}
     if source.startswith('oracle'):
         source = oracle_qualified_dsn(source)
+    if tables:
+        tables = tables.split(',')
+    else:
+        tables = ''
     ctx.obj['MIRROR'] = Mirror(source=source, target=target, source_schema=source_schema)
     ctx.obj['TABLES'] = tables
 
@@ -42,6 +46,16 @@ def diff(ctx, modified, field):
     created, modified = mirror.diff(tables=ctx.obj['TABLES'], modified=modified)
     click.echo("Results %s created, %s modfied" % (created, modified))
 
+
+@cli.command()
+@click.option('--field', default='modified', help='Specify name of modified field')
+@click.option('--modified', default=None, help='Specify a datetime for diff')
+@click.pass_context
+def diff_views(ctx, modified, field):
+    """Creates the schema if it doesn't exist and copies """
+    mirror = ctx.obj['MIRROR']
+    created, modified = mirror.diff_views(tables=ctx.obj['TABLES'], modified=modified)
+    click.echo("Results %s created, %s modfied" % (created, modified))
 
 @cli.command()
 @click.pass_context

@@ -24,7 +24,6 @@ def get_or_create(cls, session, **filters):
     is_new = not instance
     if is_new:
         instance = cls(**filters)
-        session.add(instance)
     return instance, is_new
 
 def create_or_update(cls, session, values={}, **filters):
@@ -34,4 +33,6 @@ def create_or_update(cls, session, values={}, **filters):
     instance, is_new = get_or_create(cls, session, **filters)
     for k, v in values.items():
         setattr(instance, k, v)
+    if instance.id == 967545174:
+        import ipdb; ipdb.set_trace()
     return instance, is_new
