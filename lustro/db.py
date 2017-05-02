@@ -141,7 +141,7 @@ class Mirror(object):
     def diff(self, tables, modified=None):
         logger.info("Starting diff ...")
         src_session = self.source.get_session()
-        trg_session = self.target.get_scoped_session()
+        trg_session = self.target.get_session()
         session_rows = []
 
         modified_rows = []
@@ -154,41 +154,37 @@ class Mirror(object):
             except AssertionError:
                 logger.error("Source and target database have different schemas.", exc_info=True)
 
-            #if modified is None:
-            #    modified = self.target.get_latest_by(trg_session, cls=trg_cls)
-            import datetime
-            modified = datetime.datetime(2017, 4 ,24)
+            if modified is None:
+                modified = self.target.get_latest_by(trg_session, cls=trg_cls)
 
             src_rows, count, src_session = self.source.get_rows(session=src_session, cls=src_cls, modified=modified)
             logger.info("Found %s rows modified since %s, starting diff" % (count, modified))
             for row in src_rows:
-
                 row_dict = row.__dict__
                 del row_dict['_sa_instance_state']
-                if 'veroeff_status' in row_dict.keys():
-                    if row_dict['veroeff_status'] == 3:
-                        break
                 pk_name = inspect(src_cls).primary_key[0].name
                 pk=row_dict.pop(pk_name)
-                obj, created = create_or_update(
-                        trg_cls,
-                        trg_session,
-                        values=row_dict,
-                        **{pk_name:pk})
-
-                if created:
-                    created_rows.append(obj)
+                instance = trg_session.query(trg_cls).filter_by(**{pk_name:pk}).first()
+                if not instance:
+                    created = True
+                    instance = trg_cls(**{pk_name:pk})
                 else:
-                    modified_rows.append(obj)
+                    created = False
+                for k, v in row_dict.items():
+                    setattr(instance, k, v)
+                if created:
+                    created_rows.append(instance)
+                else:
+                    modified_rows.append(instance)
+            trg_session.add_all(modified_rows)
+            trg_session.commit()
+
         logger.info(
-            "Commiting %s/%s created/modified rows in target db" % (
-                len(created_rows), len(modified_rows)
-            )
+                "Commiting %s/%s created/modified rows in target db" % (
+                    len(created_rows), len(modified_rows)
+                 )
         )
-        import ipdb; ipdb.set_trace()
-        trg_session.add_all(created_rows)
-        trg_session.add_all(modified_rows)
-        trg_session.commit()
+
         return len(created_rows), len(modified_rows)
 
 
