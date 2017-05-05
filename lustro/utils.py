@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import re
-import os
-import sys
-
 import cx_Oracle
 
 
@@ -26,6 +23,7 @@ def get_or_create(cls, session, **filters):
         instance = cls(**filters)
     return instance, is_new
 
+
 def create_or_update(cls, session, values={}, **filters):
     """First obtains either an existing object or a new one, based on
     ``filters``. Then applies ``values`` and returns a tuple (object, is_new).
@@ -33,6 +31,6 @@ def create_or_update(cls, session, values={}, **filters):
     instance, is_new = get_or_create(cls, session, **filters)
     for k, v in values.items():
         setattr(instance, k, v)
-    if instance.id == 967545174:
-        import ipdb; ipdb.set_trace()
     return instance, is_new
+
+

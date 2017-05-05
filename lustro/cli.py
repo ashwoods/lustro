@@ -5,23 +5,28 @@ import os
 from .db import Mirror
 from .utils import oracle_qualified_dsn
 
-os.environ['NLS_LANG']= 'GERMAN.AL32UTF8'
+os.environ['NLS_LANG'] = 'GERMAN.AL32UTF8'
+
 
 @click.group()
 @click_log.simple_verbosity_option()
 @click_log.init(__name__)
 @click.option('--source', help="Source DB DSN.")
 @click.option('--target', help="Target DB DSN.")
-@click.option('--tables', default=None, help="Commna separated tables names to act on.")
+@click.option('--tables', default=None, help="Comma separated table names")
+@click.option('--views', default=None, help="Comma separated view names")
 @click.option('--source-schema', default=None, help="Source schema/owner")
+@click.option()
 @click.pass_context
-def cli(ctx, source, target, tables, source_schema):
+def cli(ctx, source, target, tables, views, source_schema):
     if ctx.obj is None:
         ctx.obj = {}
     if source.startswith('oracle'):
         source = oracle_qualified_dsn(source)
     if tables:
         tables = tables.split(',')
+    if views:
+        views = views.split(',')
     else:
         tables = ''
     ctx.obj['MIRROR'] = Mirror(source=source, target=target, source_schema=source_schema)

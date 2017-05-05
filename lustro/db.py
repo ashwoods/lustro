@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import attr
 import logging
 from structlog import get_logger, configure
 from structlog.stdlib import LoggerFactory
@@ -30,87 +31,89 @@ BASIC_TYPES[DateTime] = []
 BASIC_TYPES[Integer] = []
 
 
-
+@attr.s
 class DB(object):
     """Facade for the low level DB operations"""
-    def __init__(self, dsn, schema=None):
-        self.engine = create_engine(dsn)
-        self.base = None
-        self.meta = None
-        self.schema = schema
+
+    _dsn = attr.ib()
+    schema = attr.ib(default=None)
+
+    base = attr.ib(init=False)
+    meta = attr.ib(init=False)
+    engine = attr.ib(init=False)
+    session = attr.ib(init=False)
+
+    def __attrs_post_init__(self):
+        self.engine = create_engine(self.dsn)
 
         meta = MetaData()
-        meta.reflect(bind=self.engine, schema=schema)
-
-        self.set_meta(meta)
-
-
-
-    def get_views(self):
-        insp = Inspector.from_engine(self.engine)
-        return insp.get_view_names(schema=self.schema)
-
-    def get_meta_table(self, key):
-        return self.meta.tables.get(key)
-
-    def get_meta_view(self, key, force_key=None):
-        #if force_key:
-        #    force_key = Column(force_key, Integer, primary_key=True)
-        return Table(key, self.meta, Column('id', Integer, primary_key=True), extend_existing=True, autoload=True, autoload_with=self.engine, schema=self.schema)
-
-    def set_meta(self, meta):
+        meta.reflect(bind=self.engine, schema=self.schema)
         self.meta = meta
+
         base = automap_base(metadata=self.meta)
         base.prepare()
         self.base = base
+        self.session = self.get_scoped_session()
 
-    def get_meta_names(self):
-        return self.meta.classes.keys()
+    @property
+    def views(self):
+        insp = Inspector.from_engine(self.engine)
+        return insp.get_view_names(schema=self.schema)
 
-    def get_base_class(self, key):
-        return self.base.classes.get(key)
+    @property
+    def tables(self):
+        insp = Inspector.from_engine(self.engine)
+        return insp.get_table_names(schema=self.schema)
 
-    def get_base_names(self):
-        return self.base.classes.keys()
-
-    def get_session(self):
-        return Session(self.engine)
-
-    def get_scoped_session(self):
+    def _get_scoped_session(self):
         session_factory = sessionmaker(bind=self.engine)
         return scoped_session(session_factory)
 
-    def get_rows(self, session, cls, modified=None, field='modified'):
-        if modified:
-            query = session.query(cls).filter(getattr(cls, field) >= modified)
+    def _get_table_cls(self, key):
+        table = self._table_factory(key)
+        if table.primary_key:
+            return table
         else:
-            query = session.query(cls)
-        return query.all(), query.count(), session
+            return self._table_factory(key, force_key='id')
 
-    def get_latest_by(self, session, cls, field='modified'):
-        latest = session.query(cls).order_by(getattr(cls,field).desc()).limit(1)
+    def table_factory(self, key, force_key=None):
+        if force_key:
+            force_key = Column(force_key, Integer, primary_key=True)
+
+            return Table(
+                key,
+                self.meta,
+                force_key,
+                extend_existing=True,
+                autoload=True,
+                autoload_with=self.engine,
+                schema=self.schema
+            )
+        else:
+            return Table(
+                key,
+                self.meta,
+                extend_existing=True,
+                autoload=True,
+                autoload_with=self.engine,
+                schema=self.schema
+            )
+
+    def get_rows(self, cls, modified=None, field='modified'):
+        cls = self._get_table_cls(cls)
+        q = self.session.query(cls)
+        if modified:
+            q = q.filter(cls.columns.modified >= modified)
+        if filter:
+            q = q.filter(cls.columns.eigentuemer_id == 1)
+        return q.all(), q.count()
+
+    def get_latest_by(self, cls, field='modified'):
+        latest = self.session.query(cls).order_by(getattr(cls,field).desc()).limit(1)
         return getattr(latest[0], field)
 
-    def generate_table(self, table, meta=None):
-        if meta is None:
-            meta = MetaData()
-        columns = []
-        for col in table.columns.values():
-            # This is an ugly hack but worked for the three types I
-            # had to deal with. To make it more robust, you would want
-            # to go up the class __mro__ until you get a match for the types
-            # that you want swap
-            new_col = col.copy()
-            if isinstance(col.type, Integer):
-                new_col.type = Integer
-            if isinstance(col.type, DATETIME):
-                new_col.type = DATETIME
-            if isinstance(col.type, TIMESTAMP):
-                new_col.type = TIMESTAMP
-            columns.append(new_col)
-        return Table(table.name, meta, *columns)
-
-    def safe_generate_table(self, table, meta=None):
+    @staticmethod
+    def mapped_table_factory(table, meta=None):
         """Substitute db specific types for generic ones"""
         if meta is None:
             meta = MetaData()
@@ -132,13 +135,24 @@ class DB(object):
         return Table(table.name, meta, *columns)
 
 
+@attr.s
 class Mirror(object):
     """API for cli mirroring operations"""
-    def __init__(self, source, target, source_schema=None, target_schema=None):
-        self.source = DB(source, source_schema)
-        self.target = DB(target, target_schema)
 
-    def diff(self, tables, modified=None):
+    _source_dsn = attr.ib()
+    _target_dsn = attr.ib()
+
+    _source_schema = attr.ib(default=None)
+    _target_schema = attr.ib(default=None)
+
+    source = attr.ib(init=False)
+    target = attr.ib(init=False)
+
+    def __attrs_post_init__(self):
+        self.source = DB(self._source_dsn, self._source_schema)
+        self.target = DB(self._target_dsn, self._target_schema)
+
+    def diff(self, tables, views, modified=None):
         logger.info("Starting diff ...")
         src_session = self.source.get_session()
         trg_session = self.target.get_session()
@@ -187,66 +201,7 @@ class Mirror(object):
 
         return len(created_rows), len(modified_rows)
 
-
-    def diff_views(self, tables, modified=None):
-        logger.info("Starting diff ...")
-        src_session = self.source.get_session()
-        trg_session = self.target.get_session()
-        session_rows = []
-
-        modified_rows = []
-        created_rows = []
-        for key in tables:
-            src_cls = self.source.get_meta_view(key)
-            trg_cls = self.target.get_base_class(key)
-            #try:
-            #    assert trg_cls.columns.keys() == src_cls.columns.keys()
-            #except AssertionError:
-            #    logger.error("Source and target database have different schemas.", exc_info=True)
-
-            if modified is None:
-                try:
-                    modified = self.target.get_latest_by(trg_session, cls=trg_cls)
-                except AttributeError:
-                    pass
-            src_rows, count, trg_session = self.source.get_rows(session=src_session, cls=src_cls, modified=modified)
-
-            logger.info("Found %s rows modified since %s, starting diff" % (count, modified))
-            for row in src_rows:
-                row_dict = dict(zip(src_cls.columns.keys(), row))
-                pk_name='id'
-                pk=row_dict.pop(pk_name)
-                obj, created, trg_session = create_or_update(
-                        trg_cls,
-                        trg_session,
-                        values=row_dict,
-                        **{pk_name:pk})
-
-                if created:
-                    created_rows.append(obj)
-                else:
-                    modified_rows.append(obj)
-        logger.info(
-            "Commiting %s/%s created/modified rows in target db" % (
-                len(created_rows), len(modified_rows)
-            )
-        )
-        trg_session.commit()
-        return len(created_rows), len(modified_rows)
-
-
-    def create(self, tables, views=False):
-        meta = MetaData(bind=self.target.engine)
-        for table in self.source.meta.sorted_tables:
-            self.source.safe_generate_table(table, meta)
-
-        if views:
-            for view in self.source.get_views():
-                pass
-        meta.create_all()
-        self.target.set_meta(meta)
-
-    def recreate(self, tables, views=True):
+    def create(self, tables, views):
         all_tables = True if tables == '' else False
         meta = MetaData(bind=self.target.engine)
         for table in self.source.meta.sorted_tables:
@@ -255,13 +210,12 @@ class Mirror(object):
 
         if views:
             for view in self.source.get_views():
-                if all_tables or view in tables:
-                    table = self.source.get_meta_view(view)
-                    self.source.safe_generate_table(table, meta)
+                table = self.source.get_meta_view(view)
+                self.source.safe_generate_table(table, meta)
         meta.create_all()
         self.target.set_meta(meta)
 
-    def mirror(self, tables):
+    def mirror(self, tables, views):
         src_session = self.source.get_session()
         trg_session = self.target.get_session()
         session_rows = []

@@ -11,7 +11,7 @@ def read(*parts):
 
 setup(
     name="lustro",
-    version="0.0.1b",
+    version="0.0.1a",
     url='https://github.com/ashwoods/lustro',
     license='MIT',
     description="mirror an oracle database to a postgresql using sqlalchemy",
@@ -25,12 +25,11 @@ setup(
     },
     packages=['lustro'],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
         'Topic :: Utilities',
     ],
@@ -39,7 +38,8 @@ setup(
         'click-log',
         'cx_Oracle',
         'Psycopg2',
-	'sqlalchemy'
+        'sqlalchemy',
+        'attr'
     ],
     zip_safe=False,
 )
